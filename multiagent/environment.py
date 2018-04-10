@@ -3,6 +3,10 @@ from gym import spaces
 from gym.envs.registration import EnvSpec
 import numpy as np
 
+from multiprocessing import Process, Pipe
+
+import time
+
 # environment for all agents in the multiagent world
 # currently code assumes that no agents will be created/destroyed at runtime!
 class MultiAgentEnv(gym.Env):
@@ -27,21 +31,38 @@ class MultiAgentEnv(gym.Env):
         # environment parameters
         self.discrete_action_space = True
         # if true, action is a number 0...N, otherwise action is a one-hot N-dimensional vector
-        self.discrete_action_input = False
+        self.discrete_action_input = True
         # if true, even the action is continuous, action will be performed discretely
         self.force_discrete_action = world.discrete_action if hasattr(world, 'discrete_action') else False
         # if true, every agent has the same reward
         self.shared_reward = False
         self.time = 0
 
+        # My modifications
+        self.render_geoms = None
+        self.render_geoms_xform = None
+        # rendering
+        self.shared_viewer = shared_viewer
+        if self.shared_viewer:
+            self.viewers = [None]
+        else:
+            self.viewers = [None] * self.n
+        self._reset_render()
+        self.num_envs = 1
+        self.remotes, self.work_remotes = zip(*[Pipe() for _ in range(self.num_envs)])
+        self.step_count = 0
+        self.step_max = 25
+
         # configure spaces
         self.action_space = []
         self.observation_space = []
-        for agent in self.agents:
+        for agent in self.agents: # returns list of action spaces. Each agent has a MultiDiscrete action space
             total_action_space = []
             # physical action space
             if self.discrete_action_space:
                 u_action_space = spaces.Discrete(world.dim_p * 2 + 1)
+                # self.observation_space.append(u_action_space)
+                # print('u_action_space: ', u_action_space)
             else:
                 u_action_space = spaces.Box(low=-agent.u_range, high=+agent.u_range, shape=(world.dim_p,), dtype=np.float32)
             if agent.movable:
@@ -49,6 +70,8 @@ class MultiAgentEnv(gym.Env):
             # communication action space
             if self.discrete_action_space:
                 c_action_space = spaces.Discrete(world.dim_c)
+                # self.observation_space.append(c_action_space)
+                # print('c_action_space: ', c_action_space)
             else:
                 c_action_space = spaces.Box(low=0.0, high=1.0, shape=(world.dim_c,), dtype=np.float32)
             if not agent.silent:
@@ -63,18 +86,14 @@ class MultiAgentEnv(gym.Env):
                 self.action_space.append(act_space)
             else:
                 self.action_space.append(total_action_space[0])
+            # print('act_space: ', act_space)
             # observation space
             obs_dim = len(observation_callback(agent, self.world))
             self.observation_space.append(spaces.Box(low=-np.inf, high=+np.inf, shape=(obs_dim,), dtype=np.float32))
+            self.obs_dim = obs_dim
             agent.action.c = np.zeros(self.world.dim_c)
+            # print('agent.action.c: ', agent.action.c)
 
-        # rendering
-        self.shared_viewer = shared_viewer
-        if self.shared_viewer:
-            self.viewers = [None]
-        else:
-            self.viewers = [None] * self.n
-        self._reset_render()
 
     def step(self, action_n):
         obs_n = []
@@ -100,12 +119,20 @@ class MultiAgentEnv(gym.Env):
         if self.shared_reward:
             reward_n = [reward] * self.n
 
+        done = all(done_n)
+        if self.step_count >= self.step_max:
+            self.reset()
+            self.step_count = -1
+
+        self.step_count += 1
+        # print(obs_n)
         return obs_n, reward_n, done_n, info_n
 
     def reset(self):
         # reset world
         self.reset_callback(self.world)
         # reset renderer
+        # print('Resetting')
         self._reset_render()
         # record observations for each agent
         obs_n = []
@@ -144,26 +171,29 @@ class MultiAgentEnv(gym.Env):
         agent.action.u = np.zeros(self.world.dim_p)
         agent.action.c = np.zeros(self.world.dim_c)
         # process action
-        if isinstance(action_space, spaces.MultiDiscrete):
-            act = []
-            size = action_space.high - action_space.low + 1
-            index = 0
-            for s in size:
-                act.append(action[index:(index+s)])
-                index += s
-            action = act
-        else:
-            action = [action]
+        # if isinstance(action_space, spaces.MultiDiscrete):
+        #     act = []
+        #     size = action_space.high - action_space.low + 1
+        #     index = 0
+        #     for s in size:
+        #         act.append(action[index:(index+s)])
+        #         index += s
+        #     action = act
+        # else:
+        #     action = [action]
 
         if agent.movable:
             # physical action
             if self.discrete_action_input:
                 agent.action.u = np.zeros(self.world.dim_p)
                 # process discrete action
-                if action[0] == 1: agent.action.u[0] = -1.0
-                if action[0] == 2: agent.action.u[0] = +1.0
-                if action[0] == 3: agent.action.u[1] = -1.0
-                if action[0] == 4: agent.action.u[1] = +1.0
+                if int(action[0]) == 0: agent.action.u[0] = -1.0
+                elif int(action[0]) == 1: agent.action.u[0] = +1.0
+                elif int(action[0]) == 2: agent.action.u[1] = -1.0
+                elif int(action[0]) == 3: agent.action.u[1] = +1.0
+                else:
+                    print('ERROR: INVALID FORCE INPUT')
+                    print(action[0])
             else:
                 if self.force_discrete_action:
                     d = np.argmax(action[0])
@@ -178,17 +208,19 @@ class MultiAgentEnv(gym.Env):
             if agent.accel is not None:
                 sensitivity = agent.accel
             agent.action.u *= sensitivity
-            action = action[1:]
+            # action = action[1:]
         if not agent.silent:
             # communication action
             if self.discrete_action_input:
                 agent.action.c = np.zeros(self.world.dim_c)
-                agent.action.c[action[0]] = 1.0
+                # print(self.world.dim_c)
+                # print(int(action[1]))
+                agent.action.c[int(action[1])] = 1.0
             else:
-                agent.action.c = action[0]
+                agent.action.c = action[1]
             action = action[1:]
         # make sure we used all elements of action
-        assert len(action) == 0
+        # assert len(action) == 0
 
     # reset rendering assets
     def _reset_render(self):
@@ -196,7 +228,7 @@ class MultiAgentEnv(gym.Env):
         self.render_geoms_xform = None
 
     # render environment
-    def render(self, mode='human'):
+    def render(self, mode='human', close=True):
         if mode == 'human':
             alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
             message = ''
@@ -210,7 +242,6 @@ class MultiAgentEnv(gym.Env):
                         word = alphabet[np.argmax(other.state.c)]
                     message += (other.name + ' to ' + agent.name + ': ' + word + '   ')
             print(message)
-
         for i in range(len(self.viewers)):
             # create viewers (if necessary)
             if self.viewers[i] is None:
@@ -244,6 +275,7 @@ class MultiAgentEnv(gym.Env):
                     viewer.add_geom(geom)
 
         results = []
+        # print(self.viewers)
         for i in range(len(self.viewers)):
             from multiagent import rendering
             # update bounds to center around agent

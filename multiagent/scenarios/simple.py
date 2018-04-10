@@ -7,6 +7,7 @@ class Scenario(BaseScenario):
         world = World()
         # add agents
         world.agents = [Agent() for i in range(1)]
+        print(world.agents)
         for i, agent in enumerate(world.agents):
             agent.name = 'agent %d' % i
             agent.collide = False
