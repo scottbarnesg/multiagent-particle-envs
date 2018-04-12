@@ -181,7 +181,7 @@ class MultiAgentEnv(gym.Env):
         #     action = act
         # else:
         #     action = [action]
-
+        # print(action)
         if agent.movable:
             # physical action
             if self.discrete_action_input:
@@ -208,19 +208,20 @@ class MultiAgentEnv(gym.Env):
             if agent.accel is not None:
                 sensitivity = agent.accel
             agent.action.u *= sensitivity
-            # action = action[1:]
+            action = action[1:]
         if not agent.silent:
             # communication action
             if self.discrete_action_input:
                 agent.action.c = np.zeros(self.world.dim_c)
                 # print(self.world.dim_c)
                 # print(int(action[1]))
-                agent.action.c[int(action[1])] = 1.0
+                agent.action.c[int(action[0])] = 1.0
             else:
-                agent.action.c = action[1]
+                agent.action.c = action[0]
             action = action[1:]
         # make sure we used all elements of action
-        # assert len(action) == 0
+        # print(action)
+        assert len(action) == 0
 
     # reset rendering assets
     def _reset_render(self):
