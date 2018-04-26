@@ -16,7 +16,7 @@ class MultiAgentEnv(gym.Env):
 
     def __init__(self, world, reset_callback=None, reward_callback=None,
                  observation_callback=None, info_callback=None,
-                 done_callback=None, shared_viewer=True):
+                 done_callback=None, shared_viewer=True, name='simple_reference'):
 
         self.world = world
         self.agents = self.world.policy_agents
@@ -60,7 +60,10 @@ class MultiAgentEnv(gym.Env):
             total_action_space = []
             # physical action space
             if self.discrete_action_space:
-                u_action_space = spaces.Discrete(world.dim_p * 2 + 1)
+                if name == 'simple_reference':
+                    u_action_space = spaces.Discrete(world.dim_p * 2 + 1) # MODIFIED - MUST FIX FOR SIMPLE_REFERENCE
+                else:
+                    u_action_space = spaces.Discrete(world.dim_p*2)
                 # self.observation_space.append(u_action_space)
                 # print('u_action_space: ', u_action_space)
             else:
@@ -103,6 +106,7 @@ class MultiAgentEnv(gym.Env):
         self.agents = self.world.policy_agents
         # set action for each agent
         for i, agent in enumerate(self.agents):
+            # print(action_n)
             self._set_action(action_n[i], agent, self.action_space[i])
         # advance world state
         self.world.step()
@@ -118,11 +122,11 @@ class MultiAgentEnv(gym.Env):
         reward = np.sum(reward_n)
         if self.shared_reward:
             reward_n = [reward] * self.n
-
         done = all(done_n)
         if self.step_count >= self.step_max:
             self.reset()
             self.step_count = -1
+            done_n = [True , True]
 
         self.step_count += 1
         # print(obs_n)
@@ -182,18 +186,28 @@ class MultiAgentEnv(gym.Env):
         # else:
         #     action = [action]
         # print(action)
-        if agent.movable:
+        if agent.movable == True:
+            # print('Agent is movable')
             # physical action
             if self.discrete_action_input:
                 agent.action.u = np.zeros(self.world.dim_p)
                 # process discrete action
-                if int(action[0]) == 0: agent.action.u[0] = -1.0
-                elif int(action[0]) == 1: agent.action.u[0] = +1.0
-                elif int(action[0]) == 2: agent.action.u[1] = -1.0
-                elif int(action[0]) == 3: agent.action.u[1] = +1.0
+                if type(action) == list:
+                    if int(action[0]) == 0: agent.action.u[0] = -1.0
+                    elif int(action[0]) == 1: agent.action.u[0] = +1.0
+                    elif int(action[0]) == 2: agent.action.u[1] = -1.0
+                    elif int(action[0]) == 3: agent.action.u[1] = +1.0
+                    else:
+                        print('ERROR: INVALID FORCE INPUT')
+                        print(action[0])
                 else:
-                    print('ERROR: INVALID FORCE INPUT')
-                    print(action[0])
+                    if int(action) == 0: agent.action.u[0] = -1.0
+                    elif int(action) == 1: agent.action.u[0] = +1.0
+                    elif int(action) == 2: agent.action.u[1] = -1.0
+                    elif int(action) == 3: agent.action.u[1] = +1.0
+                    else:
+                        print('ERROR: INVALID FORCE INPUT')
+                        print(action)
             else:
                 if self.force_discrete_action:
                     d = np.argmax(action[0])
@@ -208,17 +222,26 @@ class MultiAgentEnv(gym.Env):
             if agent.accel is not None:
                 sensitivity = agent.accel
             agent.action.u *= sensitivity
-            action = action[1:]
-        if not agent.silent:
+            if type(action) == list:
+                action = action[1:]
+            else:
+                action = []
+        if agent.silent == False:
+            # print('Agent is not silent')
             # communication action
             if self.discrete_action_input:
                 agent.action.c = np.zeros(self.world.dim_c)
                 # print(self.world.dim_c)
                 # print(int(action[1]))
-                agent.action.c[int(action[0])] = 1.0
+                if type(action) == list:
+                    agent.action.c[int(action[0])] = 1.0
+                    action = action[1:]
+                else:
+                    agent.action.c[int(action)] = 1.0
+                    action = []
             else:
                 agent.action.c = action[0]
-            action = action[1:]
+                action = action[1:]
         # make sure we used all elements of action
         # print(action)
         assert len(action) == 0

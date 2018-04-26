@@ -16,7 +16,9 @@ class Scenario(BaseScenario):
             agent.size = 0.075
         # speaker
         world.agents[0].movable = False
+        world.agents[0].silent = False
         # listener
+        world.agents[1].movable = True
         world.agents[1].silent = True
         # add landmarks
         world.landmarks = [Landmark() for i in range(num_landmarks)]
@@ -39,7 +41,7 @@ class Scenario(BaseScenario):
         world.agents[0].goal_b = np.random.choice(world.landmarks)
         # random properties for agents
         for i, agent in enumerate(world.agents):
-            agent.color = np.array([0.25,0.25,0.25])               
+            agent.color = np.array([0.25,0.25,0.25])
         # random properties for landmarks
         world.landmarks[0].color = np.array([0.65,0.15,0.15])
         world.landmarks[1].color = np.array([0.15,0.65,0.15])
@@ -62,7 +64,7 @@ class Scenario(BaseScenario):
     def reward(self, agent, world):
         # squared distance from listener to landmark
         a = world.agents[0]
-        dist2 = np.sum(np.square(a.goal_a.state.p_pos - a.goal_b.state.p_pos))
+        dist2 = np.sum(np.square(a.goal_a.state.p_pos - a.goal_b.state.p_pos))/(world.dim_c**2)
         return -dist2
 
     def observation(self, agent, world):
@@ -81,11 +83,10 @@ class Scenario(BaseScenario):
         for other in world.agents:
             if other is agent or (other.state.c is None): continue
             comm.append(other.state.c)
-        
+
         # speaker
         if not agent.movable:
             return np.concatenate([goal_color])
         # listener
         if agent.silent:
             return np.concatenate([agent.state.p_vel] + entity_pos + comm)
-            

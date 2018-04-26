@@ -56,7 +56,7 @@ class Scenario(BaseScenario):
     def reward(self, agent, world):
         if agent.goal_a is None or agent.goal_b is None:
             return 0.0
-        dist2 = np.sum(np.abs(agent.goal_a.state.p_pos - agent.goal_b.state.p_pos))
+        dist2 = np.sum(np.abs(agent.goal_a.state.p_pos - agent.goal_b.state.p_pos))/(world.dim_p**2) # Normalized
         # print('internal env reward: ', -dist2)
         return -dist2 #np.exp(-dist2)
 
