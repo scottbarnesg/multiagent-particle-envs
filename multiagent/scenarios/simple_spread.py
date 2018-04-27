@@ -8,7 +8,7 @@ class Scenario(BaseScenario):
         world = World()
         # set any world properties first
         world.dim_c = 2
-        num_agents = 3
+        num_agents = 2 # 3
         num_landmarks = 3
         # add agents
         world.agents = [Agent() for i in range(num_agents)]
@@ -16,7 +16,7 @@ class Scenario(BaseScenario):
             agent.name = 'agent %d' % i
             agent.collide = True
             agent.silent = True
-            agent.size = 0.15
+            agent.size = 0.05
         # add landmarks
         world.landmarks = [Landmark() for i in range(num_landmarks)]
         for i, landmark in enumerate(world.landmarks):
@@ -73,11 +73,12 @@ class Scenario(BaseScenario):
         rew = 0
         for l in world.landmarks:
             dists = [np.sqrt(np.sum(np.square(a.state.p_pos - l.state.p_pos))) for a in world.agents]
-            rew -= min(dists)
+            rew -= min(dists)/(world.dim_p**2)
         if agent.collide:
             for a in world.agents:
                 if self.is_collision(a, agent):
                     rew -= 1
+        # print(rew)
         return rew
 
     def observation(self, agent, world):
