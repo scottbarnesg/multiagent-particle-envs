@@ -73,12 +73,12 @@ class Scenario(BaseScenario):
         rew = 0
         for l in world.landmarks:
             dists = [np.sqrt(np.sum(np.square(a.state.p_pos - l.state.p_pos))) for a in world.agents]
-            rew -= min(dists)/(world.dim_p**2)
+            rew -= min(dists)
         if agent.collide:
             for a in world.agents:
                 if self.is_collision(a, agent):
                     rew -= 1
-        # print(rew)
+        rew = rew/(world.dim_p**2)
         return rew
 
     def observation(self, agent, world):
