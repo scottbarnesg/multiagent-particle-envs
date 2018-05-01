@@ -66,6 +66,7 @@ class Scenario(BaseScenario):
         a = world.agents[0]
         dist2 = np.sum(np.square(a.goal_a.state.p_pos - a.goal_b.state.p_pos))/(world.dim_c**2)
         # print(-dist2)
+        # print('reward', -dist2)
         return -dist2
 
     def observation(self, agent, world):

@@ -51,7 +51,7 @@ class MultiAgentEnv(gym.Env):
         self.num_envs = 1
         self.remotes, self.work_remotes = zip(*[Pipe() for _ in range(self.num_envs)])
         self.step_count = 0
-        self.step_max = 25
+        self.step_max = 25 # Episode Length
 
         # configure spaces
         self.action_space = []
@@ -123,11 +123,13 @@ class MultiAgentEnv(gym.Env):
             reward_n = [reward] * self.n
         done = all(done_n)
         if self.step_count >= self.step_max:
+            # print('resetting')
             self.reset()
             self.step_count = -1
             done_n = [True , True]
 
         self.step_count += 1
+        # print('incrementing step_count')
         # print(obs_n)
         return obs_n, reward_n, done_n, info_n
 
