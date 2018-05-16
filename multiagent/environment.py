@@ -124,19 +124,22 @@ class MultiAgentEnv(gym.Env):
         done = all(done_n)
         if self.step_count >= self.step_max:
             # print('resetting')
+            success = self.world.check_success()
+            # print('success: ', success)
             self.reset()
             self.step_count = -1
             done_n = [True , True]
-
+        else:
+            success = -1
         self.step_count += 1
         # print('incrementing step_count')
         # print(obs_n)
-        return obs_n, reward_n, done_n, info_n
+        # print(reward_n)
+        return obs_n, reward_n, done_n, success, info_n
 
     def reset(self):
         # reset world
         self.reset_callback(self.world)
-        # reset renderer
         # print('Resetting')
         self._reset_render()
         # record observations for each agent
@@ -373,7 +376,7 @@ class BatchMultiAgentEnv(gym.Env):
             i += env.n
             obs_n += obs
             # reward = [r / len(self.env_batch) for r in reward]
-            reward_n += reward
+            reward_n +=  reward
             done_n += done
         return obs_n, reward_n, done_n, info_n
 

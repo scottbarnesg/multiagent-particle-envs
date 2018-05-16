@@ -79,6 +79,7 @@ class Scenario(BaseScenario):
                 if self.is_collision(a, agent):
                     rew -= 1
         rew = rew/(world.dim_p**2)
+        # print(rew)
         return rew
 
     def observation(self, agent, world):
@@ -95,6 +96,6 @@ class Scenario(BaseScenario):
         other_pos = []
         for other in world.agents:
             if other is agent: continue
-            comm.append(other.state.c)
+            comm.append(other.state.c) # What is this?
             other_pos.append(other.state.p_pos - agent.state.p_pos)
         return np.concatenate([agent.state.p_vel] + [agent.state.p_pos] + entity_pos + other_pos + comm)

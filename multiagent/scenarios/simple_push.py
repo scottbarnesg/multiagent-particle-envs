@@ -65,6 +65,7 @@ class Scenario(BaseScenario):
 
     def reward(self, agent, world):
         # Agents are rewarded based on minimum agent distance to each landmark
+        print('env reward: ', self.adversary_reward(agent, world) if agent.adversary else self.agent_reward(agent, world))
         return self.adversary_reward(agent, world) if agent.adversary else self.agent_reward(agent, world)
 
     def agent_reward(self, agent, world):
@@ -80,7 +81,7 @@ class Scenario(BaseScenario):
         neg_rew = np.sqrt(np.sum(np.square(agent.goal_a.state.p_pos - agent.state.p_pos)))
         #neg_rew = sum([np.sqrt(np.sum(np.square(a.state.p_pos - agent.state.p_pos))) for a in world.good_agents])
         return pos_rew - neg_rew
-               
+
     def observation(self, agent, world):
         # get positions of all entities in this agent's reference frame
         entity_pos = []

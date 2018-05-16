@@ -129,6 +129,7 @@ class World(object):
         # update agent state
         for agent in self.agents:
             self.update_agent_state(agent)
+        # self.success = self.check_success()
 
     # gather agent action forces
     def apply_action_force(self, p_force):
@@ -194,3 +195,26 @@ class World(object):
         force_a = +force if entity_a.movable else None
         force_b = -force if entity_b.movable else None
         return [force_a, force_b]
+
+    def check_success(self):
+        a = self.agents[0]
+        b = self.agents[1]
+        dist2 = np.sqrt((a.goal_a.state.p_pos[0] - a.goal_b.state.p_pos[0])**2 + (a.goal_a.state.p_pos[1] - a.goal_b.state.p_pos[1])**2)
+        # dista = np.sum(np.square(a.goal_a.state.p_pos - a.goal_b.state.p_pos))/(self.dim_p)
+        # distb = np.sum(np.square(b.goal_a.state.p_pos - b.goal_b.state.p_pos))/(self.dim_p)
+        success = 0
+        # for l in self.landmarks:
+        #     dista = (np.sqrt(np.sum(np.square(a.state.p_pos - l.state.p_pos))))
+        #     distb = (np.sqrt(np.sum(np.square(b.state.p_pos - l.state.p_pos))))
+        #     if dista <= 8*(0.04+0.075) or distb <= 8*(0.04+0.075):
+        #         success += 0.333
+        if dist2 <= 2*(0.04+0.075):
+            success = 1
+        else:
+            success = 0
+        # success = 0
+        # if dista <= 8*(0.04+0.075):
+        #     success += 0.5
+        # if distb <= 8*(0.04+0.075):
+        #     success += 0.5
+        return success
